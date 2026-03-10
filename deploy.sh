@@ -3,23 +3,22 @@
 set -euo pipefail
 
 echo -n "Building..."
-mvn clean package -DskipTest
+mvn clean install -DskipTests
 echo "OK"
 
 cd deploy
 
-echo -n "Removing old libs..."
-git rm -fr lib || true
+echo -n "Removing old artifacts..."
+git rm -fr lib 2>/dev/null || true
+rm -f *.elm
 echo "OK"
-
-mkdir -p lib
 
 echo -n "Copy the deploy file..."
 cp ../dev.getelements.element.attributes.properties .
 echo "OK"
 
-echo -n "Copying new build..."
-cp ../target/element-1.0.jar ../target/element-libs/* lib/
+echo -n "Copying new ELM archive..."
+cp ../element/target/*.elm .
 echo "OK"
 
 echo -n "Adding build to repo..."

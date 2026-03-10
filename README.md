@@ -1,36 +1,55 @@
-# Pong Multiplayer Presale Proxy (Codex)
+# Oncade Namazu Element
 
-This project provides a lightweight Elements service that proxies a curated set of Oncade presale API endpoints for the Pong multiplayer demo. It is based on the official [Elements example](../element-example/) project and can be deployed to an Elements environment alongside the Pong example.
+A custom [Namazu Elements](https://namazustudios.com/) Element that bridges the Oncade platform with the Elements runtime. It receives Oncade webhook events (purchases, account links), creates SDK receipts, and exposes REST/WebSocket endpoints for connected games.
 
-## Endpoints
+Built against **Namazu Elements SDK 3.7.17** using the ELM archive format.
 
-The proxy exposes the following REST endpoints under the `/api` base path:
+[![](https://jitpack.io/v/Oncade/oncade-namazu-element.svg)](https://jitpack.io/#Oncade/oncade-namazu-element)
 
-- `POST /api/v1/users/link/initiate`
-- `GET /api/v1/users/link/details`
-- `GET /api/v1/users/{userId}`
-- `GET /api/v1/users/{userId}/purchases`
-- `POST /api/v1/products`
-- `GET /api/v1/products/{userRef}`
-- `POST /api/v1/products/{userRef}/{productId}/submit`
-- `POST /api/v1/products/{userRef}/{productId}/review`
-- `POST /api/v1/wallet/balance`
-- `POST /api/v1/wallet/purchase`
-- `GET /api/v1/wallet/purchase/{purchaseId}`
+## Project Structure
 
-Requests are transparently forwarded to the presale backend located at `${BASE_URL}` (default `https://oncade.gg`). Query strings and headers (except `Host` and `Content-Length`) are preserved so the upstream API receives the same payload the Elements client submitted.
+```
+oncade-namazu-element/
+├── api/       ← Interfaces exported to other Elements (classified API jar)
+├── element/   ← Main element implementation (produces .elm archive)
+├── debug/     ← Local runner using ElementsLocalBuilder
+└── pom.xml    ← Parent POM with sdk-bom import
+```
 
-## Configuration
+## Requirements
 
-| Environment Variable | Description | Default |
-| --- | --- | --- |
-| `BASE_URL` | Target presale host that receives proxied requests. | `https://oncade.gg` |
-| `PRESALE_HTTP_CONNECT_TIMEOUT_MS` | Connect timeout in milliseconds for the upstream HTTP client. | `5000` |
+- Java 21+
+- Maven 3.9+
+- Elements SDK 3.7.17 installed locally (see below)
 
-## Development
+## Building the Elements SDK
 
-1. Install Java 21 and Maven 3.9+.
-2. From this directory run `mvn clean package` to build the proxy and copy dependencies into `target/element-libs`.
-3. Deploy the generated JAR and libraries to an Elements deployment repo (see the main element example README for packaging guidance).
+The Elements SDK 3.7.17 must be installed in your local Maven repository before building:
 
-Run `mvn test` to execute the unit tests that cover environment resolution and request routing.
+```bash
+git clone --depth 1 --branch 3.7.17 https://github.com/NamazuStudios/elements.git /tmp/elements-sdk
+cd /tmp/elements-sdk
+mvn install -DskipTests
+```
+
+## Build
+
+```bash
+mvn clean install -DskipTests
+```
+
+The ELM archive is produced at `element/target/zyx.oncade.element-1.0-SNAPSHOT.elm`.
+
+## Local Development
+
+Run the `debug` module's `run` class from your IDE with the working directory set to the project root. It uses `ElementsLocalBuilder.withSourceRoot()` to automatically build and load the element.
+
+Make sure MongoDB is running locally (see `services-dev/` in the element-example repo).
+
+## JitPack
+
+This project is published via [JitPack](https://jitpack.io/#Oncade/oncade-namazu-element). Add JitPack as a repository and reference the release tag as the version.
+
+## Deployment
+
+Run `deploy.sh` to build the ELM archive and push it to the deployment repository.

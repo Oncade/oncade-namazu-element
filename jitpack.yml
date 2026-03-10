@@ -1,0 +1,9 @@
+jdk:
+  - openjdk21
+
+before_install:
+  - git clone --depth 1 --branch 3.7.17 https://github.com/NamazuStudios/elements.git /tmp/elements-sdk
+  - cd /tmp/elements-sdk && mvn install -DskipTests -q
+
+install:
+  - mvn clean install -DskipTests
