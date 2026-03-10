@@ -1,4 +1,5 @@
-# Pong Multiplayer Presale Proxy
+# Pong Multiplayer Presale Proxy (Codex)
+
 This project provides a lightweight Elements service that proxies a curated set of Oncade presale API endpoints for the Pong multiplayer demo. It is based on the official [Elements example](../element-example/) project and can be deployed to an Elements environment alongside the Pong example.
 
 ## Endpoints

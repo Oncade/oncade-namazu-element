@@ -4,9 +4,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.oncade.pong</groupId>
-    <artifactId>presale-proxy</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <groupId>com.namazu.pongmulti</groupId>
+    <artifactId>Oncade</artifactId>
+    <version>1.0</version>
 
     <dependencies>
         <dependency>
@@ -25,6 +25,17 @@
             <version>${elements.version}</version>
         </dependency>
         <dependency>
+            <groupId>dev.getelements.elements</groupId>
+            <artifactId>sdk-local-maven</artifactId>
+            <version>${elements.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.getelements.elements</groupId>
+            <artifactId>sdk-local</artifactId>
+            <version>${elements.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
             <version>${guice.version}</version>
@@ -35,24 +46,17 @@
             <version>${logback.version}</version>
         </dependency>
         <dependency>
-            <groupId>dev.getelements.elements</groupId>
-            <artifactId>sdk-local-maven</artifactId>
-            <version>${elements.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>dev.getelements.elements</groupId>
-            <artifactId>sdk-local</artifactId>
-            <version>${elements.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
             <groupId>jakarta.websocket</groupId>
             <artifactId>jakarta.websocket-api</artifactId>
             <version>${jakarta.websocket.version}</version>
             <scope>provided</scope>
         </dependency>
-
+        <dependency>
+            <groupId>jakarta.websocket</groupId>
+            <artifactId>jakarta.websocket-client-api</artifactId>
+            <version>${jakarta.websocket.version}</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-jaxrs2-jakarta</artifactId>
@@ -80,12 +84,21 @@
             <version>${swagger.version}</version>
             <scope>provided</scope>
         </dependency>
-
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-integration-jakarta</artifactId>
+            <version>${swagger.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongodb-driver-sync</artifactId>
+            <version>${mongo.java.driver.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.20.1</version>
         </dependency>
     </dependencies>
 
@@ -94,7 +107,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.6.0</version>
+                <version>3.7.1</version>
                 <executions>
                     <execution>
                         <id>copy-element-deps</id>
@@ -113,24 +126,118 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-element-build</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <copy todir="${element.distribution.dir}/classpath">
+                                    <fileset dir="${project.build.directory}/classes" />
+                                </copy>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.1</version>
                 <configuration>
-                    <useModulePath>false</useModulePath>
+                    <release>21</release> <!-- optional if using the property above -->
                 </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-element-resources</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${element.distribution.dir}/classpath</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/resources</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.9.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-element-dependencies</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <prependGroupId>true</prependGroupId>
+                            <excludeScope>provided</excludeScope>
+                            <excludeGroupIds>ch.qos.logback,dev.getelements.elements.crossfire</excludeGroupIds>
+                            <!-- <excludeGroupIds>dev.getelements.elements.crossfire</excludeGroupIds> -->
+                            <excludeArtifactIds>sdk-local,sdk-local-maven,sdk-logback</excludeArtifactIds>
+                            <outputDirectory>${element.distribution.dir}/lib</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.7.1</version>
+                <executions>
+                    <execution>
+                        <id>zip-target-dir</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <attach>false</attach>
+                            <appendAssemblyId>false</appendAssemblyId>
+                            <finalName>${project.artifactId}-${project.version}</finalName>
+                            <descriptors>
+                                <descriptor>src/assembly/zip.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
 
     <properties>
         <swagger.version>2.2.22</swagger.version>
+        <rs.api>4.0.0</rs.api>
         <guice.version>7.0.0</guice.version>
-        <elements.version>3.3.10</elements.version>
-        <logback.version>1.2.3</logback.version>
-        <jakarta.websocket.version>2.1.0</jakarta.websocket.version>
-        <junit.version>5.10.2</junit.version>
+        <elements.version>3.5.3</elements.version>
+        <servlet.api>6.1.0</servlet.api>
+        <logback.version>1.2.13</logback.version>
+        <!-- Remove these if you already have them:
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
+        -->
+        <jakarta.websocket.version>2.1.0</jakarta.websocket.version>
+        <mongo.java.driver.version>4.10.2</mongo.java.driver.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <element.target.dir>${project.build.directory}/element</element.target.dir>
+        <element.distribution.dir>${element.target.dir}/${groupId}.${artifactId}</element.distribution.dir>
+        <element.distribution.zip>${element.target.dir}/${project.artifactId}-${project.version}.zip</element.distribution.zip>
     </properties>
+
 </project>
