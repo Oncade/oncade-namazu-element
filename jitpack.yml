@@ -2,6 +2,8 @@ jdk:
   - openjdk21
 
 before_install:
+  - curl -sL https://deb.nodesource.com | sudo -E bash -
+  - sudo apt-get install -y nodejs
   - sdk install maven 3.9.9
   - sdk use maven 3.9.9
   - git clone --depth 1 --branch 3.7.17 https://github.com/NamazuStudios/elements.git /tmp/elements-sdk
