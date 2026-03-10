@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.namazu.pongmulti</groupId>
-    <artifactId>Oncade</artifactId>
+    <groupId>zyx.oncade</groupId>
+    <artifactId>element</artifactId>
     <version>1.0</version>
 
     <dependencies>
@@ -210,7 +210,7 @@
                         <configuration>
                             <attach>false</attach>
                             <appendAssemblyId>false</appendAssemblyId>
-                            <finalName>${project.artifactId}-${project.version}</finalName>
+                            <finalName>element-${project.version}</finalName>
                             <descriptors>
                                 <descriptor>src/assembly/zip.xml</descriptor>
                             </descriptors>

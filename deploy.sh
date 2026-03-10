@@ -19,7 +19,7 @@ cp ../dev.getelements.element.attributes.properties .
 echo "OK"
 
 echo -n "Copying new build..."
-cp ../target/Oncade-1.0.jar ../target/element-libs/* lib/
+cp ../target/element-1.0.jar ../target/element-libs/* lib/
 echo "OK"
 
 echo -n "Adding build to repo..."

@@ -11,7 +11,7 @@ public final class Main {
 
     public static void main(String[] args) throws Exception {
         final var local = ElementsLocalBuilder.getDefault()
-                .withElementNamed("server", "com.namazu.pongmulti")
+                .withElementNamed("server", "zyx.oncade.element")
                 .build();
 
         final var dao = local.getRootElementRegistry()
