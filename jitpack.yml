@@ -28,3 +28,5 @@ install:
     export PATH="$NVM_BIN:$PATH"
     sdk use maven 3.9.9
     mvn clean install -DskipTests -Dmaven.javadoc.skip=true
+
+    
