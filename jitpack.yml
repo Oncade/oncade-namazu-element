@@ -3,7 +3,7 @@ jdk:
 
 before_install:
   - git clone --depth 1 --branch 3.7.17 https://github.com/NamazuStudios/elements.git /tmp/elements-sdk
-  - cd /tmp/elements-sdk && mvn install -DskipTests -q
+  - cd /tmp/elements-sdk && mvn install -DskipTests -Dmaven.javadoc.skip=true -Dmaven.source.skip=true -q
 
 install:
-  - mvn clean install -DskipTests
+  - mvn clean install -DskipTests -Dmaven.javadoc.skip=true
