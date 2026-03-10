@@ -2,6 +2,8 @@ jdk:
   - openjdk21
 
 before_install:
+  - sdk install maven 3.9.9
+  - sdk use maven 3.9.9
   - git clone --depth 1 --branch 3.7.17 https://github.com/NamazuStudios/elements.git /tmp/elements-sdk
   - cd /tmp/elements-sdk && mvn install -DskipTests -Dmaven.javadoc.skip=true -Dmaven.source.skip=true -q
 
