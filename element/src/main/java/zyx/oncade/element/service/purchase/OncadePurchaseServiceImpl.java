@@ -1,35 +1,38 @@
 package zyx.oncade.element.service.purchase;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mongodb.ConnectionString;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import dev.getelements.elements.sdk.service.inventory.DistinctInventoryItemService;
-import dev.getelements.elements.sdk.model.inventory.DistinctInventoryItem;
+import dev.getelements.elements.sdk.model.exception.NotFoundException;
+import dev.getelements.elements.sdk.model.receipt.CreateReceiptRequest;
+import dev.getelements.elements.sdk.model.receipt.Receipt;
+import dev.getelements.elements.sdk.service.receipt.ReceiptService;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zyx.oncade.element.model.oncade.purchase.OncadePurchase;
 
 import java.time.Instant;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 
 public class OncadePurchaseServiceImpl implements OncadePurchaseService {
 
     private static final Logger logger = LoggerFactory.getLogger(OncadePurchaseServiceImpl.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private MongoDatabase database;
-
-    private DistinctInventoryItemService distinctInventoryItemService;
+    private ReceiptService receiptService;
 
     @Inject
-    public void setDistinctInventoryItemService(final DistinctInventoryItemService distinctInventoryItemService) {
-        this.distinctInventoryItemService = distinctInventoryItemService;
+    public void setReceiptService(final ReceiptService receiptService) {
+        this.receiptService = receiptService;
     }
 
     @Inject
@@ -95,65 +98,67 @@ public class OncadePurchaseServiceImpl implements OncadePurchaseService {
     public void createReceipt(OncadePurchase purchase) {
         Objects.requireNonNull(purchase, "Purchase must not be null");
 
-        String itemId = purchase.getItemId();
+        String purchaseId = purchase.getPurchaseId();
         String userId = purchase.getNamazuUserId();
 
-        if (itemId == null || userId == null) {
-            logger.warn("Cannot create receipt: itemId={}, namazuUserId={}", itemId, userId);
+        if (purchaseId == null || userId == null) {
+            logger.warn("Cannot create receipt: purchaseId={}, namazuUserId={}", purchaseId, userId);
             return;
         }
 
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("purchaseId", purchase.getPurchaseId());
-        metadata.put("gameId", purchase.getGameId());
-        metadata.put("itemType", purchase.getItemType());
-        metadata.put("amount", purchase.getAmount());
-        metadata.put("currency", purchase.getCurrency());
-        metadata.put("userRef", purchase.getUserRef());
-        metadata.put("userEmail", purchase.getUserEmail());
-        metadata.put("source", "oncade");
-        metadata.put("createdAt", Instant.now().toEpochMilli());
+        CreateReceiptRequest request = new CreateReceiptRequest();
+        request.setOriginalTransactionId(purchaseId);
+        request.setSchema(ONCADE_RECEIPT_SCHEMA);
+        request.setUserId(userId);
+        request.setPurchaseTime(Instant.now().toEpochMilli());
+        request.setBody(serializePurchaseBody(purchase));
 
-        if (purchase.getMetadata() != null) {
-            metadata.put("purchaseMetadata", purchase.getMetadata());
-        }
+        Receipt receipt = receiptService.createReceipt(request);
 
-        DistinctInventoryItem receipt = distinctInventoryItemService.createDistinctInventoryItem(
-                itemId,
-                null,
-                userId,
-                metadata
-        );
-
-        logger.info("Created receipt (DistinctInventoryItem) id={} for user={} item={}",
-                receipt.getId(), userId, itemId);
+        logger.info("Created receipt id={} schema={} txn={} for user={}",
+                receipt.getId(), ONCADE_RECEIPT_SCHEMA, purchaseId, userId);
     }
 
     @Override
     public void revokeReceipt(OncadePurchase purchase) {
         Objects.requireNonNull(purchase, "Purchase must not be null");
 
-        String itemId = purchase.getItemId();
-        String userId = purchase.getNamazuUserId();
-
-        if (itemId == null || userId == null) {
-            logger.warn("Cannot revoke receipt: itemId={}, namazuUserId={}", itemId, userId);
+        String purchaseId = purchase.getPurchaseId();
+        if (purchaseId == null) {
+            logger.warn("Cannot revoke receipt: purchaseId is null");
             return;
         }
 
         try {
-            Optional<DistinctInventoryItem> existing =
-                    Optional.ofNullable(distinctInventoryItemService.getDistinctInventoryItem(purchase.getPurchaseId()));
+            Receipt existing = receiptService.getReceiptBySchemaAndTransactionId(
+                    ONCADE_RECEIPT_SCHEMA, purchaseId);
+            receiptService.deleteReceipt(existing.getId());
+            logger.info("Revoked receipt id={} for purchaseId={}", existing.getId(), purchaseId);
+        } catch (NotFoundException e) {
+            logger.warn("No receipt found to revoke for schema={} purchaseId={}",
+                    ONCADE_RECEIPT_SCHEMA, purchaseId);
+        }
+    }
 
-            existing.ifPresentOrElse(
-                    item -> {
-                        distinctInventoryItemService.deleteInventoryItem(item.getId());
-                        logger.info("Revoked receipt id={} for user={} item={}", item.getId(), userId, itemId);
-                    },
-                    () -> logger.warn("No receipt found to revoke for purchaseId={}", purchase.getPurchaseId())
-            );
-        } catch (Exception e) {
-            logger.error("Failed to revoke receipt for purchaseId={}: {}", purchase.getPurchaseId(), e.getMessage());
+    private String serializePurchaseBody(OncadePurchase purchase) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("purchaseId", purchase.getPurchaseId());
+        body.put("itemId", purchase.getItemId());
+        body.put("itemType", purchase.getItemType());
+        body.put("gameId", purchase.getGameId());
+        body.put("userRef", purchase.getUserRef());
+        body.put("userEmail", purchase.getUserEmail());
+        body.put("amount", purchase.getAmount());
+        body.put("currency", purchase.getCurrency());
+        if (purchase.getMetadata() != null) {
+            body.put("metadata", purchase.getMetadata());
+        }
+
+        try {
+            return objectMapper.writeValueAsString(body);
+        } catch (JsonProcessingException e) {
+            logger.warn("Failed to serialize purchase body, falling back to toString: {}", e.getMessage());
+            return purchase.toString();
         }
     }
 }

@@ -6,6 +6,8 @@ import java.time.Instant;
 
 public interface OncadePurchaseService {
 
+    String ONCADE_RECEIPT_SCHEMA = "com.oncade.platform";
+
     void insertPurchaseEvent(OncadePurchase purchase, Instant receivedAt);
 
     void createReceipt(OncadePurchase purchase);

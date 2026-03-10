@@ -3,17 +3,21 @@
 // Otherwise, you must include additional package-info.java files in child packages.
 //@dev.getelements.elements.sdk.annotation.ElementDefinition(recursive = true)
 @ElementDefinition(recursive = true)
-// Enables DI via Guice
 @GuiceElementModule(OncadeElementModule.class)
-// Allows injecting Mongo SDK from Elements Core
 @ElementDependency("dev.getelements.elements.sdk.mongo")
-// Allows injecting DAO layer from Elements Core
 @ElementDependency("dev.getelements.elements.sdk.dao")
-// Allows injecting Service layer from Elements Core
 @ElementDependency("dev.getelements.elements.sdk.service")
+@ElementService(
+        value = OncadeReceiptEventHandler.class,
+        implementation = @ElementServiceImplementation(OncadeReceiptEventHandlerImpl.class)
+)
 package zyx.oncade.element;
 
 import zyx.oncade.element.guice.OncadeElementModule;
+import zyx.oncade.element.service.receipt.OncadeReceiptEventHandler;
+import zyx.oncade.element.service.receipt.OncadeReceiptEventHandlerImpl;
 import dev.getelements.elements.sdk.annotation.ElementDefinition;
 import dev.getelements.elements.sdk.annotation.ElementDependency;
+import dev.getelements.elements.sdk.annotation.ElementService;
+import dev.getelements.elements.sdk.annotation.ElementServiceImplementation;
 import dev.getelements.elements.sdk.spi.guice.annotations.GuiceElementModule;

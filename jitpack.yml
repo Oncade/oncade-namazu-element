@@ -2,12 +2,21 @@ jdk:
   - openjdk21
 
 before_install:
-  - curl -o- https://raw.githubusercontent.com | bash
-  - export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" && nvm install 18 && nvm use 18 && npm -v
-  - sdk install maven 3.9.9
-  - sdk use maven 3.9.9
-  - git clone --depth 1 --branch 3.7.17 https://github.com/NamazuStudios/elements.git /tmp/elements-sdk
-  - cd /tmp/elements-sdk && mvn install -DskipTests -Dmaven.javadoc.skip=true -Dmaven.source.skip=true -q -pl sdk-bom,sdk,sdk-model,sdk-service,sdk-spi,sdk-spi-guice,sdk-util,sdk-local,sdk-local-maven,sdk-logback,sdk-guice,sdk-dao,sdk-mongo,sdk-cluster,sdk-jakarta-rs,common-util,guice,!web-ui-react-jetty -am
+  # 1. Install NVM and Node 18
+  - curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+  # 2. Load NVM and install Node 18 in one chained command
+  - export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" && nvm install 18
+  # 3. Use the dynamic NVM_BIN path for your Maven build
+  - |
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    export PATH="$NVM_BIN:$PATH"
+    sdk install maven 3.9.9
+    sdk use maven 3.9.9
+    git clone --depth 1 --branch 3.7.17 https://github.com /tmp/elements-sdk
+    cd /tmp/elements-sdk && mvn install -DskipTests -Dmaven.javadoc.skip=true -Dmaven.source.skip=true -q -pl sdk-bom,sdk,sdk-model,sdk-service,sdk-spi,sdk-spi-guice,sdk-util,sdk-local,sdk-local-maven,sdk-logback,sdk-guice,sdk-dao,sdk-mongo,sdk-cluster,sdk-jakarta-rs,common-util,guice,!web-ui-react-jetty -am
 
 install:
   - mvn clean install -DskipTests -Dmaven.javadoc.skip=true
+
+
