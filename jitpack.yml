@@ -2,12 +2,13 @@ jdk:
   - openjdk21
 
 before_install:
-  - curl -sL https://deb.nodesource.com | sudo -E bash -
-  - sudo apt-get install -y nodejs
   - sdk install maven 3.9.9
   - sdk use maven 3.9.9
   - git clone --depth 1 --branch 3.7.17 https://github.com/NamazuStudios/elements.git /tmp/elements-sdk
-  - cd /tmp/elements-sdk && mvn install -DskipTests -Dmaven.javadoc.skip=true -Dmaven.source.skip=true -q -pl sdk-bom,sdk,sdk-model,sdk-service,sdk-spi,sdk-spi-guice,sdk-util,sdk-local,sdk-local-maven,sdk-logback,sdk-guice,sdk-dao,sdk-mongo,sdk-cluster,sdk-jakarta-rs,common-util,guice,!web-ui-react-jetty -am
+  - sed -i 's|<module>web-ui-react-jetty</module>||g' /tmp/elements-sdk/pom.xml
+  - sed -i 's|<module>archetype</module>||g' /tmp/elements-sdk/pom.xml
+  - sed -i 's|<module>archetype-kotlin</module>||g' /tmp/elements-sdk/pom.xml
+  - cd /tmp/elements-sdk && mvn install -DskipTests -Dmaven.javadoc.skip=true -Dmaven.source.skip=true -q
 
 install:
   - mvn clean install -DskipTests -Dmaven.javadoc.skip=true
