@@ -2,17 +2,29 @@ jdk:
   - openjdk21
 
 before_install:
-  - curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
   - |
+    # 1. Install NVM
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
     export NVM_DIR="$HOME/.nvm"
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    
+    # 2. Install Node and set PATH
     nvm install 18
     export PATH="$NVM_BIN:$PATH"
+    
+    # 3. Setup Maven
     sdk install maven 3.9.9
     sdk use maven 3.9.9
-    # Fix: Ensure the full GitHub URL is present
-    - git clone --depth 1 --branch 3.7.17 https://github.com/NamazuStudios/elements.git /tmp/elements-sdk
+    
+    # 4. Clone and Build elements-sdk
+    git clone --depth 1 --branch 3.7.17 https://github.com/NamazuStudios/elements.git /tmp/elements-sdk
     cd /tmp/elements-sdk && mvn install -DskipTests -Dmaven.javadoc.skip=true -Dmaven.source.skip=true -q -pl sdk-bom,sdk,sdk-model,sdk-service,sdk-spi,sdk-spi-guice,sdk-util,sdk-local,sdk-local-maven,sdk-logback,sdk-guice,sdk-dao,sdk-mongo,sdk-cluster,sdk-jakarta-rs,common-util,guice,!web-ui-react-jetty -am
 
 install:
-  - mvn clean install -DskipTests -Dmaven.javadoc.skip=true
+  - |
+    # We must reload the PATH here as well because 'install' is a new shell session
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    export PATH="$NVM_BIN:$PATH"
+    sdk use maven 3.9.9
+    mvn clean install -DskipTests -Dmaven.javadoc.skip=true
