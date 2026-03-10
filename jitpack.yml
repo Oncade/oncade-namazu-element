@@ -8,8 +8,8 @@ before_install:
     export NVM_DIR="$HOME/.nvm"
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
     
-    # 2. Install Node 16 (Compatible with older GLIBC)
-    nvm install 16
+    # 2. Install Node and set PATH
+    nvm install 18
     export PATH="$NVM_BIN:$PATH"
     
     # 3. Setup Maven
@@ -24,7 +24,6 @@ install:
   - |
     export NVM_DIR="$HOME/.nvm"
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-    nvm use 16
     export PATH="$NVM_BIN:$PATH"
     sdk use maven 3.9.9
     mvn clean install -DskipTests -Dmaven.javadoc.skip=true
