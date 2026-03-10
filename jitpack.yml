@@ -3,10 +3,7 @@ jdk:
 
 before_install:
   - curl -o- https://raw.githubusercontent.com | bash
-  - export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-  - nvm install 18
-  - nvm use 18
-  - npm -v
+  - export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" && nvm install 18 && nvm use 18 && npm -v
   - sdk install maven 3.9.9
   - sdk use maven 3.9.9
   - git clone --depth 1 --branch 3.7.17 https://github.com/NamazuStudios/elements.git /tmp/elements-sdk
