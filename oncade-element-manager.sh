@@ -203,6 +203,9 @@ do_release() {
     echo "==> Setting POM versions to ${next}..."
     mvn versions:set -DnewVersion="$next" -DgenerateBackupPoms=false -q
 
+    echo "==> Building ELM with version ${next}..."
+    do_build
+
     git add -A
     git commit -m "Release ${next}"
     git push origin main
@@ -260,10 +263,10 @@ do_status() {
 
     # Build / ELM package
     echo ""
-    local elm_dir=$(find element/target -maxdepth 2 -type f -name "dev.getelements.element.manifest.properties" -exec dirname {} \; 2>/dev/null | head -1)
-    if [[ -n "$elm_dir" ]]; then
+    local elm_file=$(ls element/target/*.elm 2>/dev/null | head -1)
+    if [[ -n "$elm_file" ]]; then
         echo "  Element build:    present (element/target/)"
-        echo "  ELM package:      ${elm_dir}"
+        echo "  ELM package:      ${SCRIPT_DIR}/${elm_file}"
     elif [[ -d "element/target" ]]; then
         echo "  Element build:    present (element/target/)"
         echo "  ELM package:      not found"
@@ -304,6 +307,13 @@ do_info() {
     echo "  Docker image tag:   ${TAG:-$DEFAULT_TAG}"
     echo "  GitHub repo:        https://github.com/${GITHUB_REPO}"
     echo "  JitPack:            https://jitpack.io/#${GITHUB_REPO}"
+
+    local elm_file=$(ls element/target/*.elm 2>/dev/null | head -1)
+    if [[ -n "$elm_file" ]]; then
+        echo "  ELM package:        ${SCRIPT_DIR}/${elm_file}"
+    else
+        echo "  ELM package:        not built"
+    fi
 
     if [[ -f "$props" ]]; then
         echo ""
