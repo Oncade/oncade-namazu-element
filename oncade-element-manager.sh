@@ -1,0 +1,359 @@
+#!/usr/bin/env zsh
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+DEFAULT_TAG="3.7.17"
+GITHUB_REPO="Oncade/oncade-namazu-element"
+DEV_VERSION="1.0.0"
+
+usage() {
+    echo "Usage: $0 <command> [options]"
+    echo ""
+    echo "Commands:"
+    echo "  setup    Check/install prerequisites (JDK 21, Maven, Docker)"
+    echo "  build    Compile the element (ensures JDK 21 via SDKMAN)"
+    echo "  start    Build (if needed) and start Elements + MongoDB"
+    echo "  stop     Stop all running containers"
+    echo "  status   Show environment info and container status"
+    echo "  release  Create a GitHub release (auto-increments patch version)"
+    echo "  info     Show Namazu CMS URLs and key settings"
+    echo ""
+    echo "Options:"
+    echo "  --tag <version>   Elements Docker image tag (default: ${DEFAULT_TAG})"
+    echo "  -d                Run Docker in detached mode (start only)"
+    echo ""
+    echo "Examples:"
+    echo "  $0 setup                          # check prerequisites"
+    echo "  $0 build                          # compile the element"
+    echo "  $0 start                          # build + run with default tag"
+    echo "  $0 start --tag 3.8.0-SNAPSHOT     # use a specific Elements version"
+    echo "  $0 start -d                       # run detached"
+    echo "  $0 stop                           # stop everything"
+    echo "  $0 status                         # environment + container status"
+    echo "  $0 info                           # show CMS URLs and settings"
+    echo "  $0 release                        # create next GitHub release"
+    exit 2
+}
+
+OK_MARK="[OK]"
+WARN_MARK="[WARN]"
+FAIL_MARK="[FAIL]"
+
+ensure_sdkman() {
+    if [[ ! -f "$HOME/.sdkman/bin/sdkman-init.sh" ]]; then
+        echo "${FAIL_MARK} SDKMAN not found. Install it: https://sdkman.io/install" >&2
+        return 1
+    fi
+    set +u
+    source "$HOME/.sdkman/bin/sdkman-init.sh"
+    set -u
+}
+
+resolve_java_version() {
+    set +u
+    JAVA_VERSION=$(sdk list java 2>/dev/null | grep '21\.' | grep '\-open' | grep -v '\-openj9' | awk '{print $NF}' | sort -V | tail -1)
+    set -u
+}
+
+ensure_docker() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Error: docker is not installed." >&2
+        exit 1
+    fi
+    if ! docker info >/dev/null 2>&1; then
+        echo "Error: Docker daemon is not running. Start Docker Desktop first." >&2
+        exit 1
+    fi
+}
+
+do_setup() {
+    local has_errors=0
+
+    echo "==> Checking prerequisites..."
+    echo ""
+
+    # SDKMAN
+    if [[ -f "$HOME/.sdkman/bin/sdkman-init.sh" ]]; then
+        echo "  ${OK_MARK} SDKMAN installed"
+    else
+        echo "  ${FAIL_MARK} SDKMAN not found — install: https://sdkman.io/install"
+        has_errors=1
+    fi
+
+    # Java (OpenJDK 21)
+    if ensure_sdkman 2>/dev/null; then
+        resolve_java_version
+        if [[ -n "${JAVA_VERSION:-}" ]]; then
+            set +u
+            if sdk use java "$JAVA_VERSION" 2>/dev/null; then
+                echo "  ${OK_MARK} Java ${JAVA_VERSION} installed"
+            else
+                echo "  ... Installing Java ${JAVA_VERSION}..."
+                sdk install java "$JAVA_VERSION" <<< "n"
+                sdk use java "$JAVA_VERSION"
+                echo "  ${OK_MARK} Java ${JAVA_VERSION} installed"
+            fi
+            set -u
+        else
+            echo "  ${WARN_MARK} Could not resolve latest OpenJDK 21 from SDKMAN catalog"
+            has_errors=1
+        fi
+    fi
+
+    # Maven
+    if command -v mvn >/dev/null 2>&1; then
+        echo "  ${OK_MARK} Maven $(mvn --version 2>/dev/null | head -1 | awk '{print $3}')"
+    else
+        echo "  ${WARN_MARK} Maven not found — install: https://maven.apache.org/install.html"
+        has_errors=1
+    fi
+
+    # Docker
+    if command -v docker >/dev/null 2>&1; then
+        echo "  ${OK_MARK} Docker $(docker --version 2>/dev/null | awk '{print $3}' | tr -d ',')"
+    else
+        echo "  ${WARN_MARK} Docker not installed — install: https://docs.docker.com/get-docker/"
+        has_errors=1
+    fi
+
+    # Docker Compose
+    if docker compose version >/dev/null 2>&1; then
+        echo "  ${OK_MARK} Docker Compose $(docker compose version --short 2>/dev/null)"
+    else
+        echo "  ${WARN_MARK} Docker Compose not available — install: https://docs.docker.com/compose/install/"
+        has_errors=1
+    fi
+
+    # Docker daemon
+    if command -v docker >/dev/null 2>&1; then
+        if docker info >/dev/null 2>&1; then
+            echo "  ${OK_MARK} Docker daemon running"
+        else
+            echo "  ${WARN_MARK} Docker daemon not running — start Docker Desktop"
+        fi
+    fi
+
+    echo ""
+    if [[ $has_errors -eq 0 ]]; then
+        echo "All prerequisites satisfied."
+    else
+        echo "Some prerequisites are missing — see warnings above."
+    fi
+}
+
+do_build() {
+    echo "==> Setting up JDK 21 via SDKMAN..."
+    ensure_sdkman
+    resolve_java_version
+
+    set +u
+    if ! sdk use java "$JAVA_VERSION" 2>/dev/null; then
+        echo "    Installing Java ${JAVA_VERSION}..."
+        sdk install java "$JAVA_VERSION" <<< "n"
+        sdk use java "$JAVA_VERSION"
+    fi
+    set -u
+
+    echo "==> Building element..."
+    mvn clean install -DskipTests
+}
+
+do_start() {
+    local build_marker="element/target"
+    if [[ ! -d "$build_marker" ]]; then
+        echo "==> No build found, building first..."
+        do_build
+    else
+        echo "==> Build already exists (${build_marker}/). Skipping. Use '$0 build' to rebuild."
+    fi
+
+    ensure_docker
+    "$SCRIPT_DIR/docker/start.sh" "${DETACHED[@]}"
+}
+
+do_stop() {
+    ensure_docker
+    "$SCRIPT_DIR/docker/stop.sh"
+}
+
+do_release() {
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "Error: gh CLI is not installed — install: https://cli.github.com/" >&2
+        exit 1
+    fi
+
+    local latest next
+    latest=$(gh release list --repo "$GITHUB_REPO" --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
+
+    if [[ -z "$latest" ]]; then
+        next="1.0.0"
+    else
+        local prefix="${latest%.*}"
+        local patch="${latest##*.}"
+        next="${prefix}.$(( patch + 1 ))"
+    fi
+
+    echo "Latest release: ${latest:-none}"
+    echo "Next release:   $next"
+    read -r "confirm?Proceed? [y/N] "
+    [[ "$confirm" =~ ^[Yy]$ ]] || { echo "Aborted."; return 0; }
+
+    echo "==> Setting POM versions to ${next}..."
+    mvn versions:set -DnewVersion="$next" -DgenerateBackupPoms=false -q
+
+    git add -A
+    git commit -m "Release ${next}"
+    git push origin main
+
+    gh release create "$next" \
+        --repo "$GITHUB_REPO" \
+        --title "v${next}" \
+        --notes "Release ${next}: Elements SDK ${DEFAULT_TAG}, ELM archive format, webhook + receipt support, JitPack with JDK 21."
+
+    echo "==> Restoring POM versions to ${DEV_VERSION} for development..."
+    mvn versions:set -DnewVersion="${DEV_VERSION}" -DgenerateBackupPoms=false -q
+
+    git add -A
+    git commit -m "Back to ${DEV_VERSION} for development" || echo "Nothing to commit."
+    git push origin main
+
+    echo "Done — https://github.com/${GITHUB_REPO}/releases/tag/${next}"
+}
+
+do_status() {
+    echo "==> Environment"
+    echo ""
+
+    # Java
+    if ensure_sdkman 2>/dev/null; then
+        resolve_java_version
+        set +u
+        local current_java=$(java -version 2>&1 | head -1)
+        set -u
+        echo "  Java (current):   ${current_java:-not available}"
+        echo "  Java (resolved):  ${JAVA_VERSION:-unknown}"
+    else
+        echo "  Java: SDKMAN not available"
+    fi
+
+    # Maven
+    if command -v mvn >/dev/null 2>&1; then
+        echo "  Maven:            $(mvn --version 2>/dev/null | head -1)"
+    else
+        echo "  Maven:            not installed"
+    fi
+
+    # Docker
+    if command -v docker >/dev/null 2>&1; then
+        echo "  Docker:           $(docker --version 2>/dev/null)"
+        echo "  Docker Compose:   $(docker compose version 2>/dev/null || echo 'not available')"
+        if docker info >/dev/null 2>&1; then
+            echo "  Docker daemon:    running"
+        else
+            echo "  Docker daemon:    not running"
+        fi
+    else
+        echo "  Docker:           not installed"
+    fi
+
+    # Build / ELM package
+    echo ""
+    local elm_dir=$(find element/target -maxdepth 2 -type f -name "dev.getelements.element.manifest.properties" -exec dirname {} \; 2>/dev/null | head -1)
+    if [[ -n "$elm_dir" ]]; then
+        echo "  Element build:    present (element/target/)"
+        echo "  ELM package:      ${elm_dir}"
+    elif [[ -d "element/target" ]]; then
+        echo "  Element build:    present (element/target/)"
+        echo "  ELM package:      not found"
+    else
+        echo "  Element build:    not built"
+    fi
+
+    # Containers
+    echo ""
+    echo "==> Containers"
+    echo ""
+    if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+        docker compose -f "$SCRIPT_DIR/docker/docker-compose.yaml" ps 2>/dev/null || echo "  No containers found."
+    else
+        echo "  Docker not available — cannot show container status."
+    fi
+}
+
+do_info() {
+    local props="$SCRIPT_DIR/docker/volume/ws/conf/elements.properties"
+    local attrs="$SCRIPT_DIR/dev.getelements.element.attributes.properties"
+
+    echo "==> Namazu Elements CMS"
+    echo ""
+    echo "  Endpoints:"
+    echo "    Admin / CMS:      http://localhost:8080/admin/login"
+    echo "    Swagger UI:       http://localhost:8080/doc/swagger/"
+    echo "    REST API:         http://localhost:8080/api/rest"
+    echo "    API Docs (HTML):  http://localhost:8080/doc"
+    echo "    Code Serve:       http://localhost:8080/code"
+    echo "    HTTP Tunnel:      http://localhost:8080/app"
+    echo ""
+    echo "  Default credentials:"
+    echo "    Username: root"
+    echo "    Password: example"
+    echo ""
+    echo "  MongoDB:            mongodb://localhost:27017"
+    echo "  Docker image tag:   ${TAG:-$DEFAULT_TAG}"
+    echo "  GitHub repo:        https://github.com/${GITHUB_REPO}"
+    echo "  JitPack:            https://jitpack.io/#${GITHUB_REPO}"
+
+    if [[ -f "$props" ]]; then
+        echo ""
+        echo "  Elements config (${props##*/}):"
+        while IFS= read -r line; do
+            [[ -z "$line" || "$line" == \#* ]] && continue
+            echo "    $line"
+        done < "$props"
+    fi
+
+    if [[ -f "$attrs" ]]; then
+        echo ""
+        echo "  Element attributes (${attrs##*/}):"
+        while IFS= read -r line; do
+            [[ -z "$line" || "$line" == \#* ]] && continue
+            echo "    $line"
+        done < "$attrs"
+    fi
+}
+
+# --- Parse args ---
+[[ $# -lt 1 ]] && usage
+COMMAND="$1"; shift
+
+TAG="${DEFAULT_TAG}"
+DETACHED=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --tag)
+            [[ -z "${2:-}" ]] && { echo "Error: --tag requires a value"; usage; }
+            TAG="$2"; shift 2 ;;
+        -d)
+            DETACHED=("-d"); shift ;;
+        -h|--help)
+            usage ;;
+        *)
+            echo "Unknown option: $1"; usage ;;
+    esac
+done
+
+export TAG
+
+case "$COMMAND" in
+    setup)   do_setup ;;
+    build)   do_build ;;
+    start)   do_start ;;
+    stop)    do_stop ;;
+    status)  do_status ;;
+    release) do_release ;;
+    info)    do_info ;;
+    *)       echo "Unknown command: $COMMAND"; usage ;;
+esac

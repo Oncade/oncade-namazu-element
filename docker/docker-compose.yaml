@@ -1,0 +1,51 @@
+services:
+
+  # MongoDB with replica set support (required by Elements)
+  mongo:
+    image: mongo:6.0.9
+    command:
+      - mongod
+      - --replSet
+      - local-test
+    deploy:
+      replicas: 1
+    networks:
+      - elements
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo:/data/db
+
+  # Initializes the MongoDB replica set after mongo is ready
+  rs-init:
+    build:
+      context: rs-init
+    deploy:
+      replicas: 1
+    networks:
+      - elements
+
+  # Elements Jetty Web Services (CMS + API + Swagger)
+  ws:
+    build:
+      context: ./ws
+      args:
+        TAG: ${TAG:-3.7.17}
+    depends_on:
+      - mongo
+    networks:
+      - elements
+    ports:
+      - "8080:8080"
+    volumes:
+      - cdn-repos:/opt/elements/cdn-repos
+      - script-repos:/opt/elements/script-repos
+      - ./volume/ws/conf:/opt/elements/conf:ro
+
+networks:
+  elements:
+
+volumes:
+  mongo:
+  cdn-repos:
+  script-repos:
