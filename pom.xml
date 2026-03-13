@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>zyx.oncade</groupId>
     <artifactId>parent</artifactId>
-    <version>1.0.19</version>
+    <version>1.0.0</version>
     <packaging>pom</packaging>
     <name>Oncade Namazu Element</name>
 
