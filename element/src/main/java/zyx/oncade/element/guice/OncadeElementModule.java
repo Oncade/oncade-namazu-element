@@ -3,7 +3,9 @@ package zyx.oncade.element.guice;
 import com.google.inject.PrivateModule;
 import com.google.inject.multibindings.Multibinder;
 import com.mongodb.client.MongoClient;
-import zyx.oncade.element.persistence.MongoProvider;
+import com.mongodb.client.MongoDatabase;
+import zyx.oncade.element.persistence.MongoClientProvider;
+import zyx.oncade.element.persistence.MongoDatabaseProvider;
 import zyx.oncade.element.rest.OncadeElementResource;
 import zyx.oncade.element.rest.health.OncadeHealthCheckResource;
 import zyx.oncade.element.rest.webhook.OncadeWebhookHandler;
@@ -24,7 +26,9 @@ public class OncadeElementModule extends PrivateModule {
 
     @Override
     protected void configure() {
-        bind(MongoClient.class).toProvider(MongoProvider.class).asEagerSingleton();
+
+        bind(MongoClient.class).toProvider(MongoClientProvider.class).asEagerSingleton();
+        bind(MongoDatabase.class).toProvider(MongoDatabaseProvider.class).asEagerSingleton();
 
         bind(OncadeAccountLinkService.class).to(OncadeAccountLinkServiceImpl.class);
         expose(OncadeAccountLinkService.class);

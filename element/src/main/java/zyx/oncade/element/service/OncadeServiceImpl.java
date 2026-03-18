@@ -1,8 +1,6 @@
 package zyx.oncade.element.service;
 
 import com.google.inject.name.Named;
-import com.mongodb.ConnectionString;
-import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
@@ -16,21 +14,23 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zyx.oncade.element.model.oncade.accountLink.OncadeAccountLink;
-import zyx.oncade.element.persistence.MongoProvider;
 import zyx.oncade.element.service.accountLink.OncadeAccountLinkService;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
+import java.util.UUID;
 import java.util.function.Supplier;
+
+import static zyx.oncade.element.persistence.MongoSchemaConstants.REQUESTS_COLLECTION;
 
 public class OncadeServiceImpl implements OncadeService {
 
     private final Logger logger = LoggerFactory.getLogger(OncadeServiceImpl.class);
 
+    private MongoDatabase mongoDatabase;
+
     private MongoCollection<Document> requestsCollection;
-    private MongoDatabase database;
 
     private OncadeHttpClient httpClient;
 
@@ -83,6 +83,12 @@ public class OncadeServiceImpl implements OncadeService {
     @Inject
     public void setHttpClient(final OncadeHttpClient httpClient) {
         this.httpClient = httpClient;
+    }
+
+    @Inject
+    public void setMongoDatabase(final MongoDatabase mongoDatabase) {
+        this.mongoDatabase = mongoDatabase;
+        this.requestsCollection = mongoDatabase.getCollection(REQUESTS_COLLECTION);
     }
 
     @Override
@@ -194,7 +200,7 @@ public class OncadeServiceImpl implements OncadeService {
     }
 
     @Override
-    public Map<String, String> getRequest(String idempotencyKey) {
+    public Map<String, String> getRequest(final String idempotencyKey) {
         Objects.requireNonNull(idempotencyKey, "Idempotency key must not be null");
 
         Document document = requestsCollection.find(Filters.eq("idempotencyKey", idempotencyKey)).first();
@@ -216,40 +222,12 @@ public class OncadeServiceImpl implements OncadeService {
         requestsCollection.deleteOne(Filters.eq("idempotencyKey", idempotencyKey));
     }
 
-    @Inject
-    public void setMongoDependencies(final MongoClient mongoClient,
-                                     @Named("dev.getelements.elements.mongo.uri") final String mongoUri) {
-        Objects.requireNonNull(mongoClient, "Mongo client must not be null");
-        Objects.requireNonNull(mongoUri, "Mongo URI must not be null");
-
-        final ConnectionString connectionString = new ConnectionString(mongoUri);
-        final String databaseName = connectionString.getDatabase();
-        if (databaseName == null || databaseName.isBlank()) {
-            throw new IllegalStateException("Mongo URI must include a database name.");
-        }
-
-        this.database = mongoClient.getDatabase(databaseName);
-        this.requestsCollection = database.getCollection(MongoProvider.REQUESTS_COLLECTION);
-    }
-
     private static String generateUUID() {
-        Random random = new Random();
-        String template = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx";
-        StringBuilder result = new StringBuilder();
-        for (int i = 0; i < template.length(); i++) {
-            char c = template.charAt(i);
-            if (c == 'x' || c == 'y') {
-                int r = random.nextInt(16);
-                int v = c == 'x' ? r : (r & 0x3 | 0x8);
-                result.append(Integer.toHexString(v));
-            } else {
-                result.append(c);
-            }
-        }
-        return result.toString();
+        return UUID.randomUUID().toString();
     }
 
     private static class ForwardResult {
+
         final Response response;
         final String idempotencyKey;
 
@@ -257,5 +235,7 @@ public class OncadeServiceImpl implements OncadeService {
             this.response = response;
             this.idempotencyKey = idempotencyKey;
         }
+
     }
+
 }

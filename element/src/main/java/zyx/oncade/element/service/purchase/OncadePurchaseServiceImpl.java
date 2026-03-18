@@ -3,9 +3,7 @@ package zyx.oncade.element.service.purchase;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
-import com.google.inject.name.Named;
 import com.mongodb.ConnectionString;
-import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import dev.getelements.elements.sdk.model.exception.NotFoundException;
@@ -27,7 +25,8 @@ public class OncadePurchaseServiceImpl implements OncadePurchaseService {
     private static final Logger logger = LoggerFactory.getLogger(OncadePurchaseServiceImpl.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    private MongoDatabase database;
+    private MongoDatabase mongoDatabase;
+
     private ReceiptService receiptService;
 
     @Inject
@@ -36,25 +35,15 @@ public class OncadePurchaseServiceImpl implements OncadePurchaseService {
     }
 
     @Inject
-    public void setMongoDependencies(final MongoClient mongoClient,
-                                     @Named("dev.getelements.elements.mongo.uri") final String mongoUri) {
-        Objects.requireNonNull(mongoClient, "Mongo client must not be null");
-        Objects.requireNonNull(mongoUri, "Mongo URI must not be null");
-
-        final ConnectionString connectionString = new ConnectionString(mongoUri);
-        final String databaseName = connectionString.getDatabase();
-        if (databaseName == null || databaseName.isBlank()) {
-            throw new IllegalStateException("Mongo URI must include a database name.");
-        }
-
-        this.database = mongoClient.getDatabase(databaseName);
+    public void setMongoDatabase(final MongoDatabase mongoDatabase) {
+        this.mongoDatabase = mongoDatabase;
     }
 
     @Override
     public void insertPurchaseEvent(OncadePurchase purchase, Instant receivedAt) {
         Objects.requireNonNull(purchase, "Purchase must not be null");
 
-        MongoCollection<Document> collection = database.getCollection(OncadePurchase.COLLECTION_NAME);
+        MongoCollection<Document> collection = mongoDatabase.getCollection(OncadePurchase.COLLECTION_NAME);
 
         Document document = new Document();
 

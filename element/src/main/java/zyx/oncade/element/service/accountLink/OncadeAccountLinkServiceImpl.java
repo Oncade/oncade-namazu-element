@@ -4,11 +4,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
-import com.google.inject.name.Named;
-import com.mongodb.ConnectionString;
-import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import dev.getelements.elements.sdk.dao.Transaction;
+import dev.getelements.elements.sdk.dao.UserUidDao;
+import dev.getelements.elements.sdk.model.user.UserUid;
+import jakarta.inject.Provider;
 import jakarta.ws.rs.core.Response;
 import org.bson.Document;
 import org.slf4j.Logger;
@@ -19,25 +20,22 @@ import java.util.Objects;
 
 public class OncadeAccountLinkServiceImpl implements OncadeAccountLinkService {
 
+    public static String ONCADE_UID_SCHEMA = "xyz.oncazde.user.account";
 
     private final Logger logger = LoggerFactory.getLogger(OncadeAccountLinkServiceImpl.class);
+
+    private Provider<Transaction> transactionProvider;
 
     private MongoCollection<Document> accountLinkCollection;
 
     @Inject
-    public void setMongoDependencies(final MongoClient mongoClient,
-                                     @Named("dev.getelements.elements.mongo.uri") final String mongoUri) {
-        Objects.requireNonNull(mongoClient, "Mongo client must not be null");
-        Objects.requireNonNull(mongoUri, "Mongo URI must not be null");
+    public void setMongoDatabase(final MongoDatabase mongoDatabase) {
+        this.accountLinkCollection = mongoDatabase.getCollection(OncadeAccountLink.COLLECTION_NAME);
+    }
 
-        final ConnectionString connectionString = new ConnectionString(mongoUri);
-        final String databaseName = connectionString.getDatabase();
-        if (databaseName == null || databaseName.isBlank()) {
-            throw new IllegalStateException("Mongo URI must include a database name.");
-        }
-
-        MongoDatabase database = mongoClient.getDatabase(databaseName);
-        this.accountLinkCollection = database.getCollection(OncadeAccountLink.COLLECTION_NAME);
+    @Inject
+    public void transactionProvider(final Provider<Transaction> transactionProvider) {
+        this.transactionProvider = transactionProvider;
     }
 
     private Document findDocument(String key, String value) {
@@ -53,9 +51,11 @@ public class OncadeAccountLinkServiceImpl implements OncadeAccountLinkService {
 
     @Override
     public OncadeAccountLink parseAccountLinkBodyFromJsonNode(JsonNode jsonNode) {
+
         if (jsonNode == null) {
             return null;
         }
+
 
         // Check if there's a "data" field (webhook format) or use root node directly
         JsonNode dataNode = jsonNode.has("data") ? jsonNode.get("data") : jsonNode;
@@ -80,7 +80,24 @@ public class OncadeAccountLinkServiceImpl implements OncadeAccountLinkService {
             lastIdempotencyKey = extractFieldAsString(dataNode, "lastIdempotencyKey");
         }
 
-        return new OncadeAccountLink(url, userRef, sessionKey, namazuUserId, lastIdempotencyKey);
+        final var link = new OncadeAccountLink(url, userRef, sessionKey, namazuUserId, lastIdempotencyKey);
+
+        // TODO: Determine if this is sufficient for linking the user to OnCade. If you use this API, then the
+        // TODO: user linked will show up in the Namazu Elements management panel as having a linked account to Oncade
+
+        transactionProvider.get().performAndCloseV(txn -> {
+
+            final var userUidDao = txn.getDao(UserUidDao.class);
+
+            final var userUid = new UserUid();
+            userUid.setUserId(link.getUserRef());
+            userUid.setScheme(ONCADE_UID_SCHEMA);
+            userUidDao.createUserUid(userUid);
+
+        });
+
+        return link;
+
     }
 
     @Override
@@ -174,7 +191,6 @@ public class OncadeAccountLinkServiceImpl implements OncadeAccountLinkService {
             accountLinkCollection.insertOne(newDocument);
 
         } else {
-
             Document filter = new Document("_id", loadedDocument.get("_id"));
             Document update = new Document("$set", newDocument);
             accountLinkCollection.updateOne(filter, update);
