@@ -5,6 +5,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,10 +22,6 @@ import java.util.Set;
  */
 public class MongoDatabaseProvider implements Provider<MongoDatabase> {
 
-    // TODO: In the current 3.7 build there is a problem where the Elements do not automatically inherit the
-    // TODO: system configuration. This will need to be addressed in 3.8 and a bugfix for 3.7 For now we will hardcode.
-    private static final String ELEMENTS_DATABASE_NAME = "elements";
-
     private static final Logger logger = LoggerFactory.getLogger(MongoDatabaseProvider.class);
 
     private String mongoDatabaseName;
@@ -40,7 +37,7 @@ public class MongoDatabaseProvider implements Provider<MongoDatabase> {
     public MongoDatabase get() {
 
         final var client = getMongoClientProvider().get();
-        final var database = client.getDatabase(ELEMENTS_DATABASE_NAME);
+        final var database = client.getDatabase(mongoDatabaseName);
 
         final MongoIterable<String> collectionNames = database.listCollectionNames();
 
@@ -97,6 +94,16 @@ public class MongoDatabaseProvider implements Provider<MongoDatabase> {
     @Inject
     public void setMongoClientProvider(Provider<MongoClient> mongoClientProvider) {
         this.mongoClientProvider = mongoClientProvider;
+    }
+
+    /**
+     * Sets the Mongo Database Name (from system configuration).
+     *
+     * @param mongoDatabaseName the mongo dataabase name
+     */
+    @Inject
+    public void setMongoDatabaseName(@Named("dev.getelements.elements.mongo.database.name") final String mongoDatabaseName) {
+        this.mongoDatabaseName = mongoDatabaseName;
     }
 
 }
