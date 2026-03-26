@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>zyx.oncade</groupId>
     <artifactId>parent</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.20</version>
     <packaging>pom</packaging>
     <name>Oncade Namazu Element</name>
 
@@ -28,6 +28,8 @@
         <servlet.api>6.1.0</servlet.api>
         <logback.version>1.2.13</logback.version>
         <mongo.java.driver.version>4.10.2</mongo.java.driver.version>
+        <!-- OpenAPI Generator (via Elements SDK) requests 4.3.1; that line has a broken parent on Central. -->
+        <handlebars.version>4.3.0</handlebars.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss'Z'</maven.build.timestamp.format>
         <api.classifier>${project.groupId}.api</api.classifier>
@@ -82,6 +84,17 @@
                 <groupId>zyx.oncade</groupId>
                 <artifactId>element</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.github.jknack</groupId>
+                <artifactId>handlebars</artifactId>
+                <version>${handlebars.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.jknack</groupId>
+                <artifactId>handlebars-jackson2</artifactId>
+                <version>${handlebars.version}</version>
             </dependency>
 
         </dependencies>
