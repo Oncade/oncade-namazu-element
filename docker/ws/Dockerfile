@@ -11,6 +11,17 @@ ADD --chown=elements:elements \
     https://repo1.maven.org/maven2/org/slf4j/slf4j-api/${SLF4J_VERSION}/slf4j-api-${SLF4J_VERSION}.jar \
     /opt/elements/lib/slf4j-api-${SLF4J_VERSION}.jar
 
+# Workaround: Guice on the server formats errors with com.google.common.base.CaseFormat; Guava is not on
+# the root Jetty classpath in some 3.7.x images, so logging a CreationException throws NoClassDefFoundError.
+ARG GUAVA_VERSION=33.1.0
+ARG FAILURE_ACCESS_VERSION=1.0.2
+ADD --chown=elements:elements \
+    https://repo1.maven.org/maven2/com/google/guava/failureaccess/${FAILURE_ACCESS_VERSION}/failureaccess-${FAILURE_ACCESS_VERSION}.jar \
+    /opt/elements/lib/failureaccess-${FAILURE_ACCESS_VERSION}.jar
+ADD --chown=elements:elements \
+    https://repo1.maven.org/maven2/com/google/guava/guava/${GUAVA_VERSION}-jre/guava-${GUAVA_VERSION}-jre.jar \
+    /opt/elements/lib/guava-${GUAVA_VERSION}-jre.jar
+
 USER elements:elements
 
 ENTRYPOINT [ \

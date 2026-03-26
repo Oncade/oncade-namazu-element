@@ -17,7 +17,7 @@
 #     sdk use maven 3.9.9
     
 #     # 4. Clone and Build elements-sdk
-#     git clone --depth 1 --branch 3.7.17 https://github.com/NamazuStudios/elements.git /tmp/elements-sdk
+#     git clone --depth 1 --branch 3.7.24 https://github.com/NamazuStudios/elements.git /tmp/elements-sdk
 #     cd /tmp/elements-sdk && mvn install -DskipTests -Dmaven.javadoc.skip=true -Dmaven.source.skip=true -q -pl sdk-bom,sdk,sdk-model,sdk-service,sdk-spi,sdk-spi-guice,sdk-util,sdk-local,sdk-local-maven,sdk-logback,sdk-guice,sdk-dao,sdk-mongo,sdk-cluster,sdk-jakarta-rs,common-util,guice,!web-ui-react-jetty -am
 
 # install:

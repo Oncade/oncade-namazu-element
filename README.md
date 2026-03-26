@@ -2,7 +2,7 @@
 
 A custom [Namazu Elements](https://namazustudios.com/) Element that bridges the Oncade platform with the Elements runtime. It receives Oncade webhook events (purchases, account links), creates SDK receipts, and exposes REST/WebSocket endpoints for connected games.
 
-Built against **Namazu Elements SDK 3.7.17** using the ELM archive format.
+Built against **Namazu Elements SDK 3.7.24** using the ELM archive format.
 
 [![](https://jitpack.io/v/Oncade/oncade-namazu-element.svg)](https://jitpack.io/#Oncade/oncade-namazu-element)
 
@@ -20,14 +20,14 @@ oncade-namazu-element/
 
 - Java 21+
 - Maven 3.9+
-- Elements SDK 3.7.17 installed locally (see below)
+- Elements SDK 3.7.24 installed locally (see below)
 
 ## Building the Elements SDK
 
-The Elements SDK 3.7.17 must be installed in your local Maven repository before building:
+The Elements SDK 3.7.24 must be installed in your local Maven repository before building:
 
 ```bash
-git clone --depth 1 --branch 3.7.17 https://github.com/NamazuStudios/elements.git /tmp/elements-sdk
+git clone --depth 1 --branch 3.7.24 https://github.com/NamazuStudios/elements.git /tmp/elements-sdk
 cd /tmp/elements-sdk
 mvn install -DskipTests
 ```
@@ -38,7 +38,7 @@ mvn install -DskipTests
 mvn clean install -DskipTests
 ```
 
-The ELM archive is produced at `element/target/zyx.oncade.element-1.0-SNAPSHOT.elm`.
+The ELM archive is produced at `element/target/zyx.oncade.element-<version>.elm` (see `project.version` in the root `pom.xml`, typically `1.0.0` during development).
 
 ## Local Development
 

@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>zyx.oncade</groupId>
     <artifactId>parent</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.21</version>
     <packaging>pom</packaging>
     <name>Oncade Namazu Element</name>
 
@@ -20,9 +20,11 @@
         <encoding>UTF-8</encoding>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
-        <elements.version>3.7.20</elements.version>
+        <elements.version>3.7.24</elements.version>
         <swagger.version>2.2.22</swagger.version>
         <guice.version>7.0.0</guice.version>
+        <!-- Bundle for ELM lib/: SDK BOM marks Guava as provided with Guice, but the element ClassLoader needs it at runtime. -->
+        <guava.version>33.1.0-jre</guava.version>
         <rs.api>4.0.0</rs.api>
         <jakarta.websocket.version>2.1.0</jakarta.websocket.version>
         <servlet.api>6.1.0</servlet.api>
@@ -95,6 +97,12 @@
                 <groupId>com.github.jknack</groupId>
                 <artifactId>handlebars-jackson2</artifactId>
                 <version>${handlebars.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
             </dependency>
 
         </dependencies>

@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-TAG="${TAG:-3.7.17}"
+TAG="${TAG:-3.7.24}"
 export TAG
 
 echo "Starting Namazu Elements (TAG=${TAG}) + MongoDB..."

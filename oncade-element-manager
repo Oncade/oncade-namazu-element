@@ -4,7 +4,8 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-DEFAULT_TAG="3.7.17"
+# Keep in sync with <elements.version> in pom.xml (Docker base + Maven sdk-bom).
+DEFAULT_TAG="3.7.24"
 GITHUB_REPO="Oncade/oncade-namazu-element"
 DEV_VERSION="1.0.0"
 
